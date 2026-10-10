@@ -1,0 +1,35 @@
+# /etc/systemd/system/seker.service — Şeker Medya web sitesi (Next.js)
+
+[Unit]
+Description=Seker Medya web sitesi (Next.js)
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=seker
+Group=seker
+WorkingDirectory=/opt/seker/app
+EnvironmentFile=/opt/seker/app/.env
+Environment=NODE_ENV=production
+# Kod İstanbul saatini kendisi hesaplar (src/lib/tarih.ts); bu satır günlüklerin
+# saatini okunur kılmak için. Sunucu UTC olsa da site doğru saati basar.
+Environment=TZ=Europe/Istanbul
+# package.json "start": next start -p 3060 -H 127.0.0.1 — yalnız yerel arayüz.
+# Dışarıdan doğrudan :3060'a gelinirse Caddy atlanır, X-Real-IP uydurulur (rehber §7.24/132).
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=5
+
+# Sertleştirme. ProtectSystem=strict DEĞİL: Next .next/cache'e yazamaz (rehber §7.4/20).
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,52 @@
+# /etc/caddy/Caddyfile — ALANADI.com yerine gerçek alan adı yazılır (iki yerde).
+# Caddy Let's Encrypt sertifikasını kendisi alır ve yeniler; DNS A kaydı (kök + www)
+# bu sunucunun IP'sini göstermeli.
+
+# www → kök adres (tek adres: arama motoru iki kopya görmesin, canonical ile aynı)
+www.ALANADI.com {
+	redir https://ALANADI.com{uri} permanent
+}
+
+ALANADI.com {
+	encode zstd gzip
+
+	# Yüklenen fotoğraf ve açılış videosu: uygulamayı yormadan doğrudan diskten.
+	# Dosya adlarını sunucu üretir, rastgele ve değişmezdir → uzun önbellek güvenli.
+	# file_server video için Range (206) isteğini kendisi karşılar (iPhone Safari ister).
+	# Desen uygulamadakiyle aynı: src/lib/yukleme.ts → dosyaAdiGecerliMi.
+	handle_path /yuklemeler/* {
+		root * /var/lib/seker/yuklemeler
+		@gecerli path_regexp ^/[A-Za-z0-9_-]{8,64}\.(webp|mp4|webm)$
+		handle @gecerli {
+			header Cache-Control "public, max-age=31536000, immutable"
+			header X-Content-Type-Options nosniff
+			file_server
+		}
+		respond 404
+	}
+
+	# Panel yüklemeleri: video en çok 25 MB (src/lib/yukleme.ts). Biraz pay bırakılır;
+	# daha büyüğü uygulamaya hiç ulaşmadan kesilir.
+	request_body {
+		max_size 30MB
+	}
+
+	reverse_proxy 127.0.0.1:3060 {
+		# ŞART: istemcinin gönderdiği X-Real-IP'nin ÜZERİNE gerçek adresi yaz.
+		# Teklif formunun hız sınırı bu başlığa bakar (src/lib/http.ts → istemciIp);
+		# bu satır olmazsa saldırgan başlığı uydurup sınırı atlar (rehber §7.24/132).
+		header_up X-Real-IP {remote_host}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/seker-erisim.log {
+			roll_size 20MiB
+			roll_keep 10
+		}
+	}
+}

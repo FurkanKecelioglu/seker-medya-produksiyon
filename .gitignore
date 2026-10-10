@@ -1,0 +1,56 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Prisma istemcisi her makinede `prisma generate` ile üretilir
+/src/generated/
+!.env.example
+.dev.log
+
+# Codex çalışma artıkları — ham konuşma günlükleri ve ara kanıtlar (görev metinleri, RAPOR-*.md ve betikler depoda)
+/codex/RAPOR/*.log
+/codex/RAPOR/*.txt
+/codex/RAPOR/*.json
+/codex/kanit/
+# Başka bir firmanın sitesinden alınmış referans ekran görüntüleri — herkese açık depoda yayımlanmaz
+/codex/referans/*.png
+# Gerçek bir kişi hakkındaki araştırma notu — herkese açık depoda yayımlanmaz
+/notlar/arastirma-ercan-seker.md

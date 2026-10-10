@@ -1,0 +1,232 @@
+/* Giriş animasyonu — "kamera vizöründen açılış" (karar 0002 eki, Görev 03).
+ * Zaman çizelgesi 4,5 sn; yüzdeler bu süreye göre (0,6 sn = %13,3 …).
+ * Perde kendini SAF CSS ile kapatır (forwards): JS hiç çalışmasa da 4,5 sn sonra görünmez ve
+ * tıklanamaz olur — sayfa asla kilitli kalmaz. JS yalnız "Geç", ESC, zaman kodu ve oturum bayrağı için.
+ * Renkler globals.css simgelerinden; burada renk kodu yok (açık tonlar color-mix ile). */
+
+.perde {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+  background: var(--zemin);
+  color: var(--yazi);
+  animation: perdeKalk 4.5s linear forwards;
+}
+
+/* Oturumda ikinci açılış ya da veri tasarrufu: satır içi betik <html>'e işaret koyar,
+ * perde ilk boyada bile çizilmez (yanıp sönme yok). */
+:global(html[data-giris="gecildi"]) .perde,
+:global(html[data-giris="gecildi"]) .gec { display: none; }
+:global(html[data-giris="gecildi"]) .perde { opacity: 0; visibility: hidden; pointer-events: none; }
+
+/* Kilit ilk karede başlar ve JS durursa da CSS emniyetiyle açılır; boş sayfalara taşınmaz. */
+:global(html[data-giris="oynuyor"]):has(.perde) { animation: kaydirmaAc 4.5s step-end forwards; }
+:global(html[data-giris="oynuyor"]):has(.film) { animation-duration: 20s; }
+:global(html):has(.perde[data-gecildi]) { animation: none; }
+@keyframes kaydirmaAc {
+  0%, 99.99% { overflow: hidden; }
+  100% { overflow: visible; }
+}
+
+/* Hareket hassasiyeti olan ziyaretçi hiç animasyon görmez */
+@media (prefers-reduced-motion: reduce) {
+  .perde, .gec { display: none; }
+  :global(html):has(.perde) { animation: none; }
+}
+
+/* Film: süresi dosyaya bağlı, JS bitirir (ended/hata/donma). JS düşerse emniyet: 20 sn sonra kendiliğinden kalkar. */
+.perde.film { animation: filmEmniyet 20s linear forwards; }
+.film ~ .gec { animation: filmEmniyet 20s linear forwards; }
+.filmVideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+.perde[data-gecildi], .gec[data-gecildi] { animation: hizliKalk 0.3s ease-out forwards; }
+
+/* --- Zemin görseli: açılışın KENDİ görseli (aynı dosya, aynı sizes → tek indirme) --- */
+.gorsel {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(1.15);
+  filter: blur(24px) brightness(0.55);
+  animation: gorselNetles 4.5s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+.gorsel img { width: 100%; height: 100%; object-fit: cover; object-position: 54% center; }
+
+/* --- Vizör katmanı: köşeler, ızgara, odak karesi, yazılar. Geri çekilmede büyüyüp söner. --- */
+.vizor {
+  position: absolute;
+  inset: clamp(14px, 3vw, 40px);
+  animation: vizorCekil 4.5s cubic-bezier(0.55, 0, 0.75, 0.2) forwards;
+  will-change: transform, opacity;
+}
+
+.kose {
+  position: absolute;
+  width: clamp(34px, 6vw, 84px);
+  aspect-ratio: 1;
+  border: 0 solid var(--yazi);
+  animation: koseCiz 4.5s ease-out forwards;
+}
+.solUst { top: 0; left: 0; border-top-width: 2px; border-left-width: 2px; --cizgi-bas: inset(0 100% 100% 0); }
+.sagUst { top: 0; right: 0; border-top-width: 2px; border-right-width: 2px; --cizgi-bas: inset(0 0 100% 100%); }
+.sagAlt { bottom: 0; right: 0; border-bottom-width: 2px; border-right-width: 2px; --cizgi-bas: inset(100% 0 0 100%); }
+.solAlt { bottom: 0; left: 0; border-bottom-width: 2px; border-left-width: 2px; --cizgi-bas: inset(100% 100% 0 0); }
+
+.izgara {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background:
+    linear-gradient(90deg, transparent calc(33.33% - 0.5px), color-mix(in srgb, var(--yazi) 22%, transparent) 0,
+      transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px),
+      color-mix(in srgb, var(--yazi) 22%, transparent) 0, transparent calc(66.66% + 0.5px)),
+    linear-gradient(180deg, transparent calc(33.33% - 0.5px), color-mix(in srgb, var(--yazi) 22%, transparent) 0,
+      transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px),
+      color-mix(in srgb, var(--yazi) 22%, transparent) 0, transparent calc(66.66% + 0.5px));
+  animation: izgaraGor 4.5s linear forwards;
+}
+
+.odak {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: clamp(70px, 9vw, 120px);
+  aspect-ratio: 4 / 3;
+  border: 1.5px solid var(--yazi);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1.35);
+  animation: odakOtur 4.5s ease-out forwards;
+}
+.odak::after {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border: 1.5px solid var(--vurgu);
+  opacity: 0;
+  animation: afYan 4.5s linear forwards;
+}
+.af {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  font: 600 10px/1 var(--font-body), sans-serif;
+  letter-spacing: 0.2em;
+  color: var(--vurgu);
+  opacity: 0;
+  animation: afYan 4.5s linear forwards;
+}
+
+.ust, .alt {
+  position: absolute;
+  inset-inline: clamp(16px, 2.5vw, 34px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font: 500 11px/1 ui-monospace, "SFMono-Regular", Consolas, monospace;
+  letter-spacing: 0.12em;
+  opacity: 0;
+  animation: yaziGor 4.5s linear forwards;
+}
+.ust { top: clamp(16px, 2.5vw, 30px); }
+.alt { bottom: clamp(16px, 2.5vw, 30px); color: var(--soluk); }
+
+.rec { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; }
+.recNokta {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--vurgu);
+  box-shadow: 0 0 12px var(--vurgu);
+  animation: recYanip 1s steps(1, end) infinite;
+}
+.zamanKodu { font-variant-numeric: tabular-nums; }
+
+/* Firma adı: vizördeki "klip adı" gibi, küçük; içerik vitrin verisinden gelir */
+.klip { max-width: 45vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- "Geç" düğmesi: perdenin DIŞINDA (perde aria-hidden), ilk kareden görünür --- */
+.gec {
+  position: fixed;
+  right: clamp(30px, 5vw, 72px);
+  bottom: clamp(74px, 9vw, 110px);
+  z-index: 201;
+  min-width: 88px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid color-mix(in srgb, var(--yazi) 55%, transparent);
+  background: color-mix(in srgb, var(--zemin) 55%, transparent);
+  color: var(--yazi);
+  font: 600 12px/1 var(--font-body), sans-serif;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  animation: gecKalk 4.5s linear forwards;
+}
+.gec:hover { border-color: var(--yazi); }
+.gec:focus-visible { outline: 2px solid var(--odak); outline-offset: 3px; }
+
+/* Açılış metni perde kalkarken hafifçe yukarı süzülür — yalnız animasyon oynarken */
+/* (CSS modülü yerel sınıf ister: açılış, perdenin kardeşi olarak sayfada hemen sonra gelir) */
+:global(html[data-giris="oynuyor"]) .perde ~ :global(.hero .hero-content) { animation: metinGel 4.5s ease-out both; }
+
+/* ------------------------------ Kareler ------------------------------ */
+@keyframes perdeKalk {
+  0%, 73% { opacity: 1; visibility: visible; pointer-events: auto; }
+  89% { opacity: 0; visibility: visible; pointer-events: none; }
+  100% { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+@keyframes filmEmniyet {
+  0%, 98% { opacity: 1; visibility: visible; }
+  100% { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+@keyframes hizliKalk {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+@keyframes gecKalk {
+  0%, 84% { opacity: 1; visibility: visible; }
+  92%, 100% { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+@keyframes gorselNetles {
+  0%, 13.3% { opacity: 0; filter: blur(24px) brightness(0.55); transform: scale(1.15); }
+  35.6% { opacity: 1; filter: blur(24px) brightness(0.6); transform: scale(1.15); }
+  62.2% { opacity: 1; filter: blur(0) brightness(0.8); transform: scale(1.15); }
+  88.9%, 100% { opacity: 1; filter: blur(0) brightness(1); transform: scale(1); }
+}
+@keyframes vizorCekil {
+  0%, 62.2% { opacity: 1; transform: scale(1); }
+  84.4%, 100% { opacity: 0; transform: scale(1.6); }
+}
+@keyframes koseCiz {
+  0%, 13.3% { clip-path: var(--cizgi-bas); }
+  35.6%, 100% { clip-path: inset(0); }
+}
+@keyframes izgaraGor {
+  0%, 35.6% { opacity: 0; }
+  42% , 62.2% { opacity: 1; }
+  70%, 100% { opacity: 0; }
+}
+@keyframes odakOtur {
+  0%, 13.3% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+  20%, 40% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  42.2% { transform: translate(-50%, -50%) scale(1.05); }
+  45% { transform: translate(-50%, -50%) scale(1.12); }
+  48.9% { transform: translate(-50%, -50%) scale(1); }
+  51.1%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes afYan {
+  0%, 51% { opacity: 0; }
+  52%, 100% { opacity: 1; }
+}
+@keyframes yaziGor {
+  0%, 2% { opacity: 0; }
+  8%, 100% { opacity: 1; }
+}
+@keyframes recYanip {
+  0% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+@keyframes metinGel {
+  0%, 88.9% { opacity: 0; transform: translateY(26px); }
+  100% { opacity: 1; transform: none; }
+}

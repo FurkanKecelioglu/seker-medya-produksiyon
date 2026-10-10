@@ -1,0 +1,186 @@
+// Şeker Medya Prodüksiyon — veritabanı şeması
+// Tablolar: Yönetici (panel kullanıcısı), Ayar, Hizmet, Proje, Foto (proje ve
+// galeri fotoğrafları), Marka (çalışılan kurumlar), Teklif talebi, İşlem kaydı.
+//
+// Sitedeki hiçbir içerik koda gömülmez: metin, iletişim bilgisi, proje ve
+// görseller panelden değişir (karar 0003). Ekran tasarımı bu tablolara bakar.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+/// Panele giren kişi. Rol yok: firma küçük, panele giren herkes her şeyi
+/// düzenler. Hesap panelden açılmaz, `tools/yonetici-ac.mjs` ile açılır
+/// (siteyi teslim alan kişi canlıda ilk hesabı böyle kurar).
+model Yonetici {
+  id           Int      @id @default(autoincrement())
+  ad           String   @db.VarChar(80)
+  /// Giriş kimliği — küçük harfe indirilmiş, boşluksuz (lib/kimlik.ts).
+  kullaniciAdi String   @unique @db.VarChar(40)
+  sifreHash    String   @db.VarChar(100)
+  /// Pasif hesap panele giremez. Silinmez: denetim izi ona bağlı (rehber §4.6).
+  aktif        Boolean  @default(true)
+  /// Şifre değişince artar; eski oturum çerezleri geçersiz olur.
+  oturumNo     Int      @default(0)
+  islemler     IslemKaydi[]
+  olusturma    DateTime @default(now())
+  guncelleme   DateTime @updatedAt
+}
+
+/// Site ayarları (slogan, iletişim, sosyal medya, açılış videosu…).
+/// Anahtar listesi ve varsayılanlar TEK yerde: lib/ayarlar.ts.
+model Ayar {
+  anahtar    String   @id @db.VarChar(60)
+  deger      String   @db.Text
+  guncelleme DateTime @updatedAt
+}
+
+/// Ana sayfadaki hizmet kartları (raporda 8 adet). İkon, lib/ikonlar.ts'teki
+/// izinli listeden bir addır — serbest metin değil, tasarım hangi ikonları
+/// çizeceğini bilsin diye.
+model Hizmet {
+  id         Int      @id @default(autoincrement())
+  baslik     String   @db.VarChar(80)
+  ozet       String   @db.VarChar(300)
+  ikon       String   @db.VarChar(40)
+  sira       Int      @default(0)
+  aktif      Boolean  @default(true)
+  olusturma  DateTime @default(now())
+  guncelleme DateTime @updatedAt
+}
+
+/// Portföy kategorileri raporda sabit: Video, Fotoğraf, Drone, Canlı Yayın, TV.
+/// Ekrandaki adları lib/kategoriler.ts verir.
+enum ProjeKategori {
+  VIDEO
+  FOTOGRAF
+  DRONE
+  CANLI_YAYIN
+  TV
+}
+
+/// Portföy projesi. Videolar sunucuda DEĞİL YouTube/Vimeo'da durur (karar 0002):
+/// burada yalnız sağlayıcı + video kimliği tutulur, gömme adresi lib/video.ts üretir.
+/// Ham bağlantı saklanmaz — kullanıcının yapıştırdığı adres iframe'e aynen
+/// konursa başka bir siteyi gömmenin yolu açılır.
+model Proje {
+  id           Int           @id @default(autoincrement())
+  /// Adres: /projeler/<slug>. Başlıktan üretilir, panelden değiştirilebilir.
+  slug         String        @unique @db.VarChar(120)
+  baslik       String        @db.VarChar(120)
+  kategori     ProjeKategori
+  /// Müşteri / kurum adı (isteğe bağlı; gizlilik isteyen müşteri olabilir)
+  musteri      String?       @db.VarChar(120)
+  yil          Int?
+  /// Kartta görünen tek cümle
+  ozet         String        @db.VarChar(300)
+  /// Detay sayfasındaki metin (düz metin, paragraflar boş satırla ayrılır)
+  aciklama     String?       @db.Text
+  /// YUKLEME_DIZINI'ndeki kapak dosyası. Boşsa ve video varsa videonun
+  /// YouTube küçük resmi kullanılır (lib/video.ts).
+  kapak        String?       @db.VarChar(120)
+  kapakGenislik  Int?
+  kapakYukseklik Int?
+  videoSaglayici String?     @db.VarChar(10) // "youtube" | "vimeo"
+  videoKimlik    String?     @db.VarChar(40)
+  /// Ana sayfadaki "Öne çıkan projeler" (raporda 6 adet; sınır ayarlarda değil
+  /// tasarımda: fazlası işaretlenirse sıraya göre ilk 6 görünür)
+  oneCikan     Boolean       @default(false)
+  /// Taslak proje sitede görünmez; panelde hazırlanıp sonra yayına alınır.
+  yayinda      Boolean       @default(false)
+  sira         Int           @default(0)
+  fotolar      Foto[]
+  olusturma    DateTime      @default(now())
+  guncelleme   DateTime      @updatedAt
+
+  @@index([yayinda, kategori, sira])
+}
+
+/// Fotoğraf. İki yerde görünebilir: bir projenin fotoğrafları ve Galeri sayfası.
+/// Ayrı "GaleriFoto" tablosu açılmadı: aynı fotoğraf hem projede hem galeride
+/// olabilir, iki tabloda tutulursa biri silinince öbürü yetim kalır (rehber §4.1).
+model Foto {
+  id         Int      @id @default(autoincrement())
+  /// Projesiz fotoğraf yalnız galeride durur. Proje silinince fotoğrafları da gider.
+  projeId    Int?
+  proje      Proje?   @relation(fields: [projeId], references: [id], onDelete: Cascade)
+  dosya      String   @db.VarChar(120)
+  genislik   Int
+  yukseklik  Int
+  aciklama   String?  @db.VarChar(200)
+  /// Galeri sayfasında görünsün mü. Projesi taslaksa galeride de görünmez.
+  galeride   Boolean  @default(true)
+  sira       Int      @default(0)
+  olusturma  DateTime @default(now())
+
+  @@index([projeId, sira])
+  @@index([galeride, sira])
+}
+
+/// Çalışılan markalar / kurumlar (ana sayfada logo şeridi).
+model Marka {
+  id         Int      @id @default(autoincrement())
+  ad         String   @db.VarChar(120)
+  logo       String?  @db.VarChar(120)
+  logoGenislik  Int?
+  logoYukseklik Int?
+  /// İsteğe bağlı: logoya tıklanınca gidilecek adres
+  url        String?  @db.VarChar(300)
+  sira       Int      @default(0)
+  aktif      Boolean  @default(true)
+  olusturma  DateTime @default(now())
+  guncelleme DateTime @updatedAt
+}
+
+enum TeklifDurumu {
+  YENI
+  ARANDI
+  TEKLIF_VERILDI
+  KAZANILDI
+  KAPANDI
+}
+
+/// "Proje Teklifi Al" formundan gelen talep. Silinmez, durumu değişir;
+/// istenmeyen (spam) kayıt için KAPANDI kullanılır.
+model TeklifTalebi {
+  id         Int          @id @default(autoincrement())
+  ad         String       @db.VarChar(80)
+  /// Normalleştirilmiş: 05XXXXXXXXX (lib/telefon.ts) — WhatsApp'tan dönüş için
+  telefon    String       @db.VarChar(20)
+  eposta     String?      @db.VarChar(120)
+  firma      String?      @db.VarChar(120)
+  /// Seçilen hizmetin O ANKİ adı. Hizmete FK değil: hizmet sonradan silinse ya da
+  /// adı değişse de talebin ne için geldiği değişmemeli (fiyatın kayda sabitlenmesi
+  /// gibi — rehber §3.6).
+  hizmet     String?      @db.VarChar(80)
+  /// Çekim/etkinlik tarihi biliniyorsa "YYYY-MM-DD"
+  etkinlikTarihi String?  @db.VarChar(10)
+  mesaj      String       @db.Text
+  durum      TeklifDurumu @default(YENI)
+  /// Yalnız panelde görünen iç not ("perşembe aranacak" gibi)
+  icNot      String?      @db.Text
+  ip         String?      @db.VarChar(64)
+  olusturma  DateTime     @default(now())
+  guncelleme DateTime     @updatedAt
+
+  @@index([durum, olusturma])
+}
+
+/// Denetim izi: kim, ne zaman, neyi değiştirdi (eski → yeni).
+model IslemKaydi {
+  id          Int        @id @default(autoincrement())
+  yoneticiId  Int?
+  yonetici    Yonetici?  @relation(fields: [yoneticiId], references: [id])
+  eylem       String     @db.VarChar(40)
+  detay       String     @db.Text
+  ip          String?    @db.VarChar(64)
+  tarih       DateTime   @default(now())
+
+  @@index([tarih])
+  @@index([eylem])
+}
