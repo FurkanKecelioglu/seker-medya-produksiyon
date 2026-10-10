@@ -144,10 +144,13 @@ mkdir -p /var/lib/seker/yuklemeler
 chmod 755 /var/lib/seker /var/lib/seker/yuklemeler   # Caddy bu klasörden okur
 ```
 
-Proje klasörünü sunucuya atın (kendi bilgisayarınızdan; sunucuda adı `app` olur):
+Projeyi GitHub'dan sunucuya çekin (sunucuda adı `app` olur):
 ```bash
-scp -r seker-medya root@SUNUCU_IP:/opt/seker/app
+apt install -y git
+git clone https://github.com/FurkanKecelioglu/seker-medya-produksiyon.git /opt/seker/app
 ```
+> Depoda `.env`, `node_modules`, `.next` ve yüklenen dosyalar YOKTUR — bunlar aşağıdaki adımlarda sunucuda oluşur.
+> Sonraki güncellemelerde: `cd /opt/seker/app && sudo -u seker git pull`, ardından derleme adımları.
 Sunucuda:
 ```bash
 chown -R seker:seker /opt/seker /var/lib/seker
