@@ -36,7 +36,8 @@ sharp (görsel) · Tailwind 4 · lucide-react · sonner. Berber projesiyle aynı
 3. ✅ **Giriş animasyonu (Claude yazdı)** ana sayfaya bağlandı, `/giris-deneme` silindi, `codex/e2e-giris.mjs` `/` için geçti.
 4. ✅ **D03 çapraz denetim** — Codex sınıra takılıp yarıda kaldı; değişikliklerini Claude çalıştırarak doğruladı
    (`codex/RAPOR/RAPOR-D03.md`): tsc/lint/90 test/giriş+vitrin+panel+film e2e hepsi geçti.
-5. **SIRADA:** kullanıcı localde gözden geçirecek (http://localhost:3060, panel /panel). Geri bildirimine göre
+5. ✅ GitHub'a yüklendi (2026-10-11, herkese açık): https://github.com/FurkanKecelioglu/seker-medya-produksiyon —
+   KURULUM.md artık `git clone` anlatıyor. **SIRADA:** kullanıcı localde gözden geçirecek (http://localhost:3060, panel /panel). Geri bildirimine göre
    düzeltme turu. Açık: logo, gerçek içerik, KVKK metni, teklif bildirimi (e-posta/push), Faz 4 teslim kontrolleri.
 
 Bugün yapılanlar (2026-10-09/10):
